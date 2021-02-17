@@ -9,10 +9,6 @@ export default {
 
   name: 'Message',
   props: {
-    from: {
-      type: String,
-      required: true
-    },
     payload: {
       type: String,
       required: true

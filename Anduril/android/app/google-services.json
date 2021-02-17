@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "604584169500",
+    "project_id": "anduril-5928f",
+    "storage_bucket": "anduril-5928f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:604584169500:android:8a278f7e42fa8a09a00fd9",
+        "android_client_info": {
+          "package_name": "com.anduril"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "604584169500-5mhobesh02n7t617seqepjt40u87eps4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnFer3TH5i4gibu5keReog6DRZLuBl2vY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "604584169500-5mhobesh02n7t617seqepjt40u87eps4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,18 +2,12 @@
 const routes = [
   {
     path: '/',
-    component: () => import('layouts/LoginLayout.vue'),
-    children: [
-      { path: '', component: () => import('pages/Index.vue') }
-    ]
+    component: () => import('layouts/LoginLayout.vue')
   },
   {
     path: '/chat',
     component: () => import('layouts/ChatLayout.vue')
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
   {
     path: '*',
     component: () => import('pages/Error404.vue')
