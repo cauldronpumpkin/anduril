@@ -1,6 +1,7 @@
 <template>
-    <li :class="cltype">
+    <li :class="type === 'file' ? (cltype + ' link') : cltype" @click="type === 'file' ? openFile : null">
         <p class="common-message-content" style="white-space: pre-line">{{ payload }}</p>
+        <q-spinner-hourglass color="primary" size="2em" v-if="loading"/>
     </li>
 </template>
 
@@ -8,14 +9,36 @@
 export default {
 
   name: 'Message',
+  data () {
+    return {
+    }
+  },
+
   props: {
     payload: {
       type: String,
       required: true
     },
+    type: {
+      type: String,
+      required: true
+    },
+    link: {
+      type: String,
+      default: ''
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
     cltype: {
       type: String,
       required: true
+    }
+  },
+
+  methods: {
+    openFile () {
     }
   }
 }
@@ -51,5 +74,9 @@ export default {
     .common-message.is-other + .is-other::before {
         background-color: aquamarine;
         display: none;
+    }
+    .link:hover {
+      cursor: pointer;
+      color: #FFBF00;
     }
 </style>

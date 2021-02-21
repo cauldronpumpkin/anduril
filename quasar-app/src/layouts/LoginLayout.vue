@@ -31,7 +31,7 @@ export default {
     this.$store.state.peer = new Peer(this.id)
     this.$store.state.peer.on('connection', conn => {
       this.$store.state.conn = conn
-      this.$router.push('/chat')
+      this.$router.replace('/chat')
     })
   },
 

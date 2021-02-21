@@ -20,7 +20,7 @@
       <q-footer>
         <q-toolbar class="bg-grey-9 text-black row">
           <input type="file" id="selectedFile" style="display: none;" @change="sendFileToPeer"/>
-          <q-btn flat round icon="attachment" size="md" onclick="document.getElementById('selectedFile').click();"/>
+          <q-btn flat round icon="attachment" size="md" onclick="document.getElementById('selectedFile').click()"/>
           <q-input autogrow rounded outlined dense class="WAL__field col-grow q-mr-sm" bg-color="white" v-model="chat_send_message" placeholder="Type a message" />
           <q-btn round flat icon="send" @click="sendMessageToPeer"/>
         </q-toolbar>
@@ -28,9 +28,8 @@
     </q-layout>
   </div>
 </template>
- 
-<script>
 
+<script>
 import Message from '../components/Message.vue'
 
 export default {
@@ -43,7 +42,9 @@ export default {
       search: '',
       chat_send_message: '',
       chat_messages: [],
-      fileBase64: ''
+      fileBase64: [],
+      fileIdx: 0,
+      limit: Math.pow(2, 20)
     }
   },
 
@@ -58,26 +59,75 @@ export default {
   async created () {
     this.$store.state.conn.on('data', data => {
       if (data.type === 'file') {
+        if (data.chunk_num === 0) {
+          this.fileBase64.push('')
+          this.fileIdx = 0
+          this.chat_messages.push({
+            payload: data.name,
+            type: 'file',
+            loading: true,
+            cltype: 'common-message is-other'
+          })
+        }
         if (!data.more) {
-          this.fileBase64 = ''
-          this.time = null
+          for (let i = this.chat_messages.length - 1; i >= 0; i--) {
+            if (this.chat_messages[i].payload === data.name) {
+              this.chat_messages[i].loading = false
+              break
+            }
+          }
+          this.fileBase64.forEach(el => {
+            console.log(el.length)
+          })
+          this.checkForMIMEType({
+            content: this.fileBase64.join(''),
+            mimetype: data.mimetype
+          })
+          this.fileBase64 = []
+          this.fileIdx = 0
         } else {
-          this.fileBase64 += data.data
+          if (this.fileBase64[this.fileIdx].length > this.limit) {
+            this.fileBase64.push('')
+            this.fileIdx++
+          }
+          this.fileBase64[this.fileIdx] += data.data
         }
       } else if (data.type === 'chat') {
         this.chat_messages.push({
           payload: data.text,
+          type: 'chat',
           cltype: 'common-message is-other'
         })
       } else if (data.type === 'notification') {
         this.recieveNotification(data)
       }
     })
+
+    this.$store.state.conn.on('close', () => {
+      alert('The Connection was Closed!')
+      this.$router.replace('/')
+    })
+
+    this.$store.state.conn.on('error', () => {
+      alert('The Connection was interrupted!')
+      this.$router.replace('/')
+    })
+
+    if (this.$q.platform.is.electron) {
+      this.$q.electron.ipcRenderer.on('clipboard-changed', (_, data) => {
+        this.$store.state.conn.send({
+          type: 'clipboard',
+          data: data
+        })
+      })
+    }
   },
 
-  updated () {
-    if (!this.$store.state.peer || !this.$store.state.conn || this.$store.state.peer.disconnected) {
-      this.$router.push('/')
+  beforeDestroy () {
+    this.$store.state.conn.close()
+    // this.$store.state.peer.destroy()
+    if (this.$q.platform.is.electron) {
+      this.$q.electron.clipboard.stopWatching()
     }
   },
 
@@ -123,15 +173,9 @@ export default {
       const file = document.getElementById('selectedFile').files[0]
       console.log(file)
       let num = 0
-      let chunkSize = 8 * 1024
+      const chunkSize = 8 * 1024
       let buffer = await this.toBase64(file)
-      console.log(buffer.slice(0, 50))
       while (buffer.length > 0) {
-        if (num === 1000) {
-          chunkSize = 4 * 1024
-        } else if (num === 25000) {
-          chunkSize = 2 * 1024
-        }
         const chunk = buffer.slice(0, chunkSize)
         buffer = buffer.slice(chunkSize, buffer.byteLength)
         await this.$store.state.conn.send({
@@ -145,9 +189,41 @@ export default {
       await this.$store.state.conn.send({
         type: 'file',
         name: file.name,
-        file_type: file.type,
+        mimetype: file.type,
         more: false
       })
+    },
+
+    checkForMIMEType (data) {
+      // let blob
+      // if (response.mimetype === 'pdf') {
+      const blob = this.converBase64toBlob(data.content, data.mimetype)
+      // } else if (response.mimetype === 'doc') {
+      //   blob = this.converBase64toBlob(response.content, 'application/msword')
+      // }
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl)
+    },
+
+    converBase64toBlob (content, contentType) {
+      const sliceSize = 512
+      var byteCharacters = window.atob(content)
+      const byteArrays = [
+      ]
+      for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+        const slice = byteCharacters.slice(offset, offset + sliceSize)
+        const byteNumbers = new Array(slice.length)
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        byteArrays.push(byteArray)
+      }
+      const blob = new Blob(byteArrays, {
+        type: contentType
+      })
+
+      return blob
     }
   }
 }

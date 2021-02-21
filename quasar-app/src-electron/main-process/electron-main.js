@@ -1,5 +1,7 @@
 import { app, BrowserWindow, nativeTheme } from 'electron'
 
+const clipboard = require('electron-clipboard-extended')
+
 try {
   if (process.platform === 'win32' && nativeTheme.shouldUseDarkColors === true) {
     require('fs').unlinkSync(require('path').join(app.getPath('userData'), 'DevTools Extensions'))
@@ -24,6 +26,7 @@ function createWindow () {
     width: 1000,
     height: 600,
     useContentSize: true,
+    frame: false,
     webPreferences: {
       // Change from /quasar.conf.js > electron > nodeIntegration;
       // More info: https://quasar.dev/quasar-cli/developing-electron-apps/node-integration
@@ -36,6 +39,11 @@ function createWindow () {
   })
 
   mainWindow.loadURL(process.env.APP_URL)
+  
+  clipboard.on('text-changed', () => {
+    mainWindow.webContents.send('clipboard-changed', clipboard.readText()); 
+  })
+  .startWatching()
 
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -46,6 +54,7 @@ app.on('ready', createWindow)
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    clipboard.stopWatching()
     app.quit()
   }
 })
