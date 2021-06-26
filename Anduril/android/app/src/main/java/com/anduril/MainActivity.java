@@ -15,7 +15,7 @@ public class MainActivity extends ReactActivity {
 
   @Override
   public void invokeDefaultOnBackPressed() {
-      // do not call super. invokeDefaultOnBackPressed() as it will close the app.  Instead lets just put it in the background.
+      // super invokeDefaultOnBackPressed()
       moveTaskToBack(true);
   }
 }

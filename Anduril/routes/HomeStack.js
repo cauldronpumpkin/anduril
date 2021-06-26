@@ -13,9 +13,15 @@ const screens = {
   },
   Chat: {
     screen: Chat,
+    navigationOptions: {
+      headerShown: false
+    }
   },
   Loading: {
     screen: Loading,
+    navigationOptions: {
+      headerShown: false
+    }
   },
 };
 

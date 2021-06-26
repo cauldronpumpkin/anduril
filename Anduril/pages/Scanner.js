@@ -4,13 +4,20 @@ import React from 'react';
 
 import {StyleSheet, Text, TouchableOpacity} from 'react-native';
 
-import {RNCamera} from 'react-native-camera';
 import QRCodeScanner from 'react-native-qrcode-scanner';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Scanner = ({navigation}) => {
-  const onSuccess = (e) => {
+  const onSuccess = async (e) => {
+    await AsyncStorage.setItem('peer_id', e.data);
     navigation.replace('Loading', {peerId: e.data});
   };
+
+  AsyncStorage.getItem('peer_id').then(res => {
+    if (res !== null) {
+      navigation.replace('Loading', {peerId: res});
+    }
+  });
 
   return (
     <QRCodeScanner

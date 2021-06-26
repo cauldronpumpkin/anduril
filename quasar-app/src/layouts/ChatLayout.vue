@@ -1,31 +1,34 @@
 <template>
-  <div class="WAL position-relative bg-grey-10" :style="style">
-    <q-layout view="lHh Lpr lFf" class="WAL__layout shadow-3 bg-grey-10 text-white" container ref="scroll">
-      <q-header elevated>
-        <q-toolbar class="bg-amber-5 text-black">
-
-          <q-btn round flat>
-            <q-avatar>
-              <!-- <img :src="currentConversation.avatar"> -->
-            </q-avatar>
-          </q-btn>
-          <q-space/>
-        </q-toolbar>
-      </q-header>
-      <div class="messanger">
-        <ul class="messanger-list" style="list-style-type:none;">
-          <Message v-for="(mess, i) in chat_messages" :key="i" v-bind="mess" />
-        </ul>
+  <div class="row">
+    <div class="col-6">
+      <div>
+        hi
       </div>
-      <q-footer>
-        <q-toolbar class="bg-grey-9 text-black row">
-          <input type="file" id="selectedFile" style="display: none;" @change="sendFileToPeer"/>
-          <q-btn flat round icon="attachment" size="md" onclick="document.getElementById('selectedFile').click()"/>
-          <q-input autogrow rounded outlined dense class="WAL__field col-grow q-mr-sm" bg-color="white" v-model="chat_send_message" placeholder="Type a message" />
-          <q-btn round flat icon="send" @click="sendMessageToPeer"/>
-        </q-toolbar>
-      </q-footer>
-    </q-layout>
+    </div>
+    <div class="col-6 WAL position-relative bg-grey-10" :style="style">
+      <q-layout view="lHh Lpr lFf" class="WAL__layout shadow-3 bg-grey-10 text-white" container ref="scroll">
+        <q-header elevated>
+          <q-toolbar class="bg-amber-5 text-black">
+            <q-btn round flat>
+            </q-btn>
+            <q-space/>
+          </q-toolbar>
+        </q-header>
+        <div class="messanger">
+          <ul class="messanger-list" style="list-style-type:none;">
+            <Message v-for="(mess, i) in chat_messages" :key="i" v-bind="mess" />
+          </ul>
+        </div>
+        <q-footer>
+          <q-toolbar class="bg-grey-9 text-black row">
+            <input type="file" id="selectedFile" style="display: none;" @change="sendFileToPeer"/>
+            <q-btn flat round icon="attachment" size="md" @click="clickFilePicker"/>
+            <q-input autogrow rounded outlined dense class="WAL__field col-grow q-mr-sm" bg-color="white" v-model="chat_send_message" placeholder="Type a message" />
+            <q-btn round flat icon="send" @click="sendMessageToPeer"/>
+          </q-toolbar>
+        </q-footer>
+      </q-layout>
+    </div>
   </div>
 </template>
 
@@ -42,8 +45,7 @@ export default {
       search: '',
       chat_send_message: '',
       chat_messages: [],
-      fileBase64: [],
-      fileIdx: 0,
+      fileBase64: {},
       limit: Math.pow(2, 20)
     }
   },
@@ -56,41 +58,29 @@ export default {
     }
   },
 
-  async created () {
-    this.$store.state.conn.on('data', data => {
+  created () {
+    this.$q.bex.on('peer.data', async (event) => {
+      const data = event.data
       if (data.type === 'file') {
         if (data.chunk_num === 0) {
-          this.fileBase64.push('')
-          this.fileIdx = 0
+          this.fileBase64[data.name] = ['']
+        }
+        if (!data.more) {
           this.chat_messages.push({
             payload: data.name,
             type: 'file',
-            loading: true,
             cltype: 'common-message is-other'
           })
-        }
-        if (!data.more) {
-          for (let i = this.chat_messages.length - 1; i >= 0; i--) {
-            if (this.chat_messages[i].payload === data.name) {
-              this.chat_messages[i].loading = false
-              break
-            }
-          }
-          this.fileBase64.forEach(el => {
-            console.log(el.length)
-          })
           this.checkForMIMEType({
-            content: this.fileBase64.join(''),
+            content: this.fileBase64[data.name].join(''),
             mimetype: data.mimetype
           })
-          this.fileBase64 = []
-          this.fileIdx = 0
+          delete this.fileBase64[data.name]
         } else {
-          if (this.fileBase64[this.fileIdx].length > this.limit) {
-            this.fileBase64.push('')
-            this.fileIdx++
+          if (this.fileBase64[data.name][this.fileBase64[data.name].length - 1].length > this.limit) {
+            this.fileBase64[data.name].push('')
           }
-          this.fileBase64[this.fileIdx] += data.data
+          this.fileBase64[data.name][this.fileBase64[data.name].length - 1] += data.data
         }
       } else if (data.type === 'chat') {
         this.chat_messages.push({
@@ -100,35 +90,36 @@ export default {
         })
       } else if (data.type === 'notification') {
         this.recieveNotification(data)
+      } else if (data.type === 'link') {
+        this.$q.bex.send('open.link', { url: data.text })
+        this.chat_messages.push({
+          payload: data.text,
+          type: 'link',
+          cltype: 'common-message is-other'
+        })
+      } else if (data.type === 'clipboard') {
+        await navigator.clipboard.writeText(data.text)
+      } else if (data.type === 'fs') {
+        console.log('received fs info')
       }
     })
 
-    this.$store.state.conn.on('close', () => {
+    this.$q.bex.on('peer.closed', () => {
       alert('The Connection was Closed!')
       this.$router.replace('/')
     })
 
-    this.$store.state.conn.on('error', () => {
+    this.$q.bex.on('peer.error', () => {
       alert('The Connection was interrupted!')
       this.$router.replace('/')
     })
-
-    if (this.$q.platform.is.electron) {
-      this.$q.electron.ipcRenderer.on('clipboard-changed', (_, data) => {
-        this.$store.state.conn.send({
-          type: 'clipboard',
-          data: data
-        })
-      })
-    }
   },
 
   beforeDestroy () {
-    this.$store.state.conn.close()
-    // this.$store.state.peer.destroy()
-    if (this.$q.platform.is.electron) {
-      this.$q.electron.clipboard.stopWatching()
-    }
+    this.$q.bex.send('stop.app')
+    this.$q.bex.off('peer.data')
+    this.$q.bex.off('peer.closed')
+    this.$q.bex.off('peer.error')
   },
 
   methods: {
@@ -137,7 +128,7 @@ export default {
         subtitle: 'Subtitle of the Notification',
         body: data.text,
         silent: false,
-        icon: 'https://cdn1.bbcode0.com/uploads/2021/2/15/50b43af9f89b93b56fe05ac7a426618f-full.png',
+        icon: 'https://firebasestorage.googleapis.com/v0/b/social-media-d825a.appspot.com/o/logo.png?alt=media&token=1687eac3-c04b-4085-954d-ac64cb92d9d7',
         urgency: 'critical',
         closeButtonText: 'Close Button'
       }
@@ -152,9 +143,10 @@ export default {
         type: 'chat',
         text: this.chat_send_message
       }
-      await this.$store.state.conn.send(payload)
+      this.$q.bex.send('send.data', payload)
       this.chat_messages.push({
         payload: this.chat_send_message,
+        type: 'chat',
         cltype: 'common-message is-you'
       })
       this.chat_send_message = ''
@@ -171,36 +163,32 @@ export default {
 
     async sendFileToPeer () {
       const file = document.getElementById('selectedFile').files[0]
-      console.log(file)
       let num = 0
-      const chunkSize = 8 * 1024
+      const chunkSize = 12 * 1024
+      const name = Math.floor(Math.random() * Math.pow(10, 5)).toString() + file.name
       let buffer = await this.toBase64(file)
       while (buffer.length > 0) {
         const chunk = buffer.slice(0, chunkSize)
         buffer = buffer.slice(chunkSize, buffer.byteLength)
-        await this.$store.state.conn.send({
+        this.$q.bex.send('send.data', {
           type: 'file',
+          name: name,
           chunk_num: num,
           data: chunk,
           more: true
         })
         num++
       }
-      await this.$store.state.conn.send({
+      this.$q.bex.send('send.data', {
         type: 'file',
-        name: file.name,
+        name: name,
         mimetype: file.type,
         more: false
       })
     },
 
     checkForMIMEType (data) {
-      // let blob
-      // if (response.mimetype === 'pdf') {
       const blob = this.converBase64toBlob(data.content, data.mimetype)
-      // } else if (response.mimetype === 'doc') {
-      //   blob = this.converBase64toBlob(response.content, 'application/msword')
-      // }
       const blobUrl = URL.createObjectURL(blob)
       window.open(blobUrl)
     },
@@ -224,6 +212,10 @@ export default {
       })
 
       return blob
+    },
+
+    clickFilePicker () {
+      document.getElementById('selectedFile').click()
     }
   }
 }

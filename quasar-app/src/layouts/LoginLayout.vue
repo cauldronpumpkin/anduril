@@ -16,21 +16,22 @@
 </template>
 
 <script>
-import Peer from 'peerjs'
 import QRious from 'qrious'
 
 export default {
 
   data () {
     return {
-      id: Math.floor(Math.random() * Math.pow(10, 5))
+      id: localStorage.getItem('peer_id')
     }
   },
 
   created () {
-    this.$store.state.peer = new Peer(this.id)
-    this.$store.state.peer.on('connection', conn => {
-      this.$store.state.conn = conn
+    if (!this.id) {
+      this.id = Math.floor(Math.random() * Math.pow(10, 5))
+    }
+    this.$q.bex.send('peer.start', { peerId: this.id })
+    this.$q.bex.on('peer.connected', () => {
       this.$router.replace('/chat')
     })
   },
@@ -45,6 +46,10 @@ export default {
         console.log(permission)
       })
     }
+  },
+
+  beforeDestroy () {
+    this.$q.bex.off('peer.connected')
   },
 
   methods: {

@@ -1,7 +1,6 @@
 <template>
     <li :class="type === 'file' ? (cltype + ' link') : cltype" @click="type === 'file' ? openFile : null">
         <p class="common-message-content" style="white-space: pre-line">{{ payload }}</p>
-        <q-spinner-hourglass color="primary" size="2em" v-if="loading"/>
     </li>
 </template>
 
@@ -26,10 +25,6 @@ export default {
     link: {
       type: String,
       default: ''
-    },
-    loading: {
-      type: Boolean,
-      default: false
     },
     cltype: {
       type: String,
